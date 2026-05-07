@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v1.1.1
+- **性能优化**: 将 `Types`、`ExcludeTypes` 和 `Events` 的过滤逻辑从 $O(n)$ 优化为 $O(1)$ 的 Map 查找。
+- **基础设施对齐**: 更新依赖 `go/file` 至 v1.0.7, `go/encoding` 至 v1.0.6。
+- **代码质量**: 统一变量命名规范（`watcher`, `event`），重命名内部方法 `isMatchExclude` 为 `isExcluded` 提升可读性。
+- **测试增强**: 引入专门的 `bench_test.go`，补全匹配逻辑与防抖逻辑的性能基准测试。
+
 ## v1.1.0
 - **核心升级**: 引入 `github.com/gobwas/glob` 引擎。
 - **Gitignore 语义**: `Excludes` 现在支持 `**/node_modules/**` 等复杂路径模式，并能正确处理目录边界。

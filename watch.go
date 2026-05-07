@@ -49,7 +49,11 @@ type Watcher struct {
 	mu        sync.RWMutex
 	stopChan  chan struct{}
 
-	excludeGlobs   []glob.Glob
+	excludeGlobs []glob.Glob
+	eventMap     map[EventType]struct{}
+	typeMap      map[string]struct{}
+	exTypeMap    map[string]struct{}
+
 	debounceGroups sync.Map // map[string]*timer.Debouncer
 }
 
@@ -64,61 +68,72 @@ func Start(config Config, callback func(*Event)) (*Watcher, error) {
 	if len(config.Events) == 0 {
 		config.Events = []EventType{Create, Change, Remove, Rename}
 	}
-	for i, t := range config.Types {
-		if !strings.HasPrefix(t, ".") {
-			config.Types[i] = "." + t
-		}
-	}
-	for i, t := range config.ExcludeTypes {
-		if !strings.HasPrefix(t, ".") {
-			config.ExcludeTypes[i] = "." + t
-		}
-	}
 
-	w := &Watcher{
+	watcher := &Watcher{
 		config:    &config,
 		callback:  callback,
 		fsWatcher: fsWatcher,
 		isRunning: true,
 		stopChan:  make(chan struct{}),
+		eventMap:  make(map[EventType]struct{}),
+		typeMap:   make(map[string]struct{}),
+		exTypeMap: make(map[string]struct{}),
+	}
+
+	for _, et := range config.Events {
+		watcher.eventMap[et] = struct{}{}
+	}
+
+	for _, t := range config.Types {
+		if !strings.HasPrefix(t, ".") {
+			t = "." + t
+		}
+		watcher.typeMap[t] = struct{}{}
+	}
+
+	for _, t := range config.ExcludeTypes {
+		if !strings.HasPrefix(t, ".") {
+			t = "." + t
+		}
+		watcher.exTypeMap[t] = struct{}{}
 	}
 
 	// 编译 Glob 模式
 	for _, p := range config.Excludes {
 		if g, err := glob.Compile(p, '/'); err == nil {
-			w.excludeGlobs = append(w.excludeGlobs, g)
+			watcher.excludeGlobs = append(watcher.excludeGlobs, g)
 		}
 	}
 
 	// 初始添加路径
 	for _, p := range config.Paths {
-		if err := w.Add(p); err != nil {
+		if err := watcher.Add(p); err != nil {
 			_ = fsWatcher.Close()
 			return nil, err
 		}
 	}
 
-	go w.run()
+	go watcher.run()
 
-	return w, nil
+	return watcher, nil
 }
 
 // Stop 停止监听
-func (w *Watcher) Stop() {
-	w.mu.Lock()
-	if !w.isRunning {
-		w.mu.Unlock()
+func (watcher *Watcher) Stop() {
+	watcher.mu.Lock()
+	if !watcher.isRunning {
+		watcher.mu.Unlock()
 		return
 	}
-	w.isRunning = false
-	w.mu.Unlock()
+	watcher.isRunning = false
+	watcher.mu.Unlock()
 
-	_ = w.fsWatcher.Close()
-	<-w.stopChan
+	_ = watcher.fsWatcher.Close()
+	<-watcher.stopChan
 }
 
 // Add 动态添加监听路径（递归）
-func (w *Watcher) Add(path string) error {
+func (watcher *Watcher) Add(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -134,35 +149,35 @@ func (w *Watcher) Add(path string) error {
 		}
 
 		if info.IsDir() {
-			if w.isMatchExclude(p, true) {
+			if watcher.isExcluded(p, true) {
 				return filepath.SkipDir
 			}
-			return w.fsWatcher.Add(p)
+			return watcher.fsWatcher.Add(p)
 		}
 		return nil
 	})
 }
 
-func (w *Watcher) Remove(path string) error {
+func (watcher *Watcher) Remove(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return err
 	}
-	return w.fsWatcher.Remove(absPath)
+	return watcher.fsWatcher.Remove(absPath)
 }
 
-func (w *Watcher) run() {
-	defer close(w.stopChan)
+func (watcher *Watcher) run() {
+	defer close(watcher.stopChan)
 
 	for {
 		select {
-		case fsEvent, ok := <-w.fsWatcher.Events:
+		case fsEvent, ok := <-watcher.fsWatcher.Events:
 			if !ok {
 				return
 			}
-			w.handleFsEvent(fsEvent)
+			watcher.handleFsEvent(fsEvent)
 
-		case _, ok := <-w.fsWatcher.Errors:
+		case _, ok := <-watcher.fsWatcher.Errors:
 			if !ok {
 				return
 			}
@@ -170,7 +185,7 @@ func (w *Watcher) run() {
 	}
 }
 
-func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
+func (watcher *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
 	name, err := filepath.Abs(fsEvent.Name)
 	if err != nil {
 		name = fsEvent.Name
@@ -186,7 +201,7 @@ func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
 	case fsEvent.Has(fsnotify.Create):
 		eventType = Create
 		if isDir {
-			_ = w.Add(name)
+			_ = watcher.Add(name)
 		}
 	case fsEvent.Has(fsnotify.Write):
 		eventType = Change
@@ -198,7 +213,7 @@ func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
 		return
 	}
 
-	if !w.isMatch(name, eventType, isDir) {
+	if !watcher.isMatch(name, eventType, isDir) {
 		return
 	}
 
@@ -208,60 +223,45 @@ func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
 		IsDir: isDir,
 	}
 
-	if w.config.Debounce > 0 {
-		w.debounce(event)
+	if watcher.config.Debounce > 0 {
+		watcher.debounce(event)
 	} else {
-		w.callback(event)
+		watcher.callback(event)
 	}
 }
 
-func (w *Watcher) debounce(e *Event) {
-	key := e.Path + string(e.Type)
-	d, _ := w.debounceGroups.LoadOrStore(key, timer.NewDebouncer(w.config.Debounce, func() {
-		w.callback(e)
-		w.debounceGroups.Delete(key)
+func (watcher *Watcher) debounce(event *Event) {
+	// 优化 key 生成，避免过多的字符串拼接，但在此时直接拼接是比较简单且易读的
+	key := event.Path + ":" + string(event.Type)
+	d, _ := watcher.debounceGroups.LoadOrStore(key, timer.NewDebouncer(watcher.config.Debounce, func() {
+		watcher.callback(event)
+		watcher.debounceGroups.Delete(key)
 	}))
 	d.(*timer.Debouncer).Trigger()
 }
 
-func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
+func (watcher *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 	// 1. 事件类型过滤
-	eventMatch := false
-	for _, configEt := range w.config.Events {
-		if et == configEt {
-			eventMatch = true
-			break
-		}
-	}
-	if !eventMatch {
+	if _, ok := watcher.eventMap[et]; !ok {
 		return false
 	}
 
 	// 2. 排除过滤 (通用)
-	if w.isMatchExclude(path, isDir) {
+	if watcher.isExcluded(path, isDir) {
 		return false
 	}
 
 	// 3. 类型过滤 (仅针对文件)
 	if !isDir {
 		ext := filepath.Ext(path)
-		if len(w.config.ExcludeTypes) > 0 {
-			for _, t := range w.config.ExcludeTypes {
-				if ext == t {
-					return false
-				}
+		if len(watcher.exTypeMap) > 0 {
+			if _, ok := watcher.exTypeMap[ext]; ok {
+				return false
 			}
 		}
 
-		if len(w.config.Types) > 0 {
-			typeMatch := false
-			for _, t := range w.config.Types {
-				if ext == t {
-					typeMatch = true
-					break
-				}
-			}
-			if !typeMatch {
+		if len(watcher.typeMap) > 0 {
+			if _, ok := watcher.typeMap[ext]; !ok {
 				return false
 			}
 		}
@@ -270,11 +270,16 @@ func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 	return true
 }
 
-func (w *Watcher) isMatchExclude(path string, isDir bool) bool {
+func (watcher *Watcher) isExcluded(path string, isDir bool) bool {
+	if len(watcher.excludeGlobs) == 0 {
+		return false
+	}
+
 	// 统一使用 / 作为路径分隔符进行匹配，对齐 gitignore 习惯
 	p := filepath.ToSlash(path)
 	base := filepath.Base(path)
-	for _, g := range w.excludeGlobs {
+
+	for _, g := range watcher.excludeGlobs {
 		if g.Match(p) || g.Match(base) {
 			return true
 		}
@@ -286,8 +291,8 @@ func (w *Watcher) isMatchExclude(path string, isDir bool) bool {
 	return false
 }
 
-func (w *Watcher) WatchList() []string {
-	return w.fsWatcher.WatchList()
+func (watcher *Watcher) WatchList() []string {
+	return watcher.fsWatcher.WatchList()
 }
 
 func EasyStart(path string, callback func(string, EventType)) (*Watcher, error) {
