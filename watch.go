@@ -5,9 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/fsnotify/fsnotify"
 	"apigo.cc/go/file"
+	"apigo.cc/go/timer"
+	"github.com/fsnotify/fsnotify"
+	"github.com/gobwas/glob"
 )
 
 // EventType 定义事件类型
@@ -29,11 +32,12 @@ type Event struct {
 
 // Config 监听配置
 type Config struct {
-	Paths        []string    // 监听的路径列表
-	Types        []string    // 包含的文件类型，例如 [".go", ".js"]
-	ExcludeTypes []string    // 排除的文件类型
-	Excludes     []string    // 排除的路径或文件名，支持模糊匹配
-	Events       []EventType // 监听的事件类型，默认全部
+	Paths        []string      // 监听的路径列表
+	Types        []string      // 包含的文件类型，例如 [".go", ".js"]
+	ExcludeTypes []string      // 排除的文件类型
+	Excludes     []string      // 排除模式，支持 gitignore 语义 (e.g. "**/node_modules/**", "*.log")
+	Events       []EventType   // 监听的事件类型，默认全部
+	Debounce     time.Duration // 防抖时间，相同文件的频繁事件会被合并
 }
 
 // Watcher 监听器实例
@@ -44,6 +48,9 @@ type Watcher struct {
 	isRunning bool
 	mu        sync.RWMutex
 	stopChan  chan struct{}
+
+	excludeGlobs   []glob.Glob
+	debounceGroups sync.Map // map[string]*timer.Debouncer
 }
 
 // Start 开始监听
@@ -74,6 +81,13 @@ func Start(config Config, callback func(*Event)) (*Watcher, error) {
 		fsWatcher: fsWatcher,
 		isRunning: true,
 		stopChan:  make(chan struct{}),
+	}
+
+	// 编译 Glob 模式
+	for _, p := range config.Excludes {
+		if g, err := glob.Compile(p, '/'); err == nil {
+			w.excludeGlobs = append(w.excludeGlobs, g)
+		}
 	}
 
 	// 初始添加路径
@@ -110,18 +124,17 @@ func (w *Watcher) Add(path string) error {
 		return err
 	}
 
-	// 如果路径不存在，尝试创建（保持与原逻辑一致）
 	if !file.Exists(absPath) {
 		_ = os.MkdirAll(absPath, 0755)
 	}
 
 	return filepath.Walk(absPath, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil // 忽略错误继续
+			return nil
 		}
 
 		if info.IsDir() {
-			if w.isMatchExclude(p) {
+			if w.isMatchExclude(p, true) {
 				return filepath.SkipDir
 			}
 			return w.fsWatcher.Add(p)
@@ -130,7 +143,6 @@ func (w *Watcher) Add(path string) error {
 	})
 }
 
-// Remove 动态移除监听路径
 func (w *Watcher) Remove(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
@@ -144,12 +156,11 @@ func (w *Watcher) run() {
 
 	for {
 		select {
-		case event, ok := <-w.fsWatcher.Events:
+		case fsEvent, ok := <-w.fsWatcher.Events:
 			if !ok {
 				return
 			}
-
-			w.handleFsEvent(event)
+			w.handleFsEvent(fsEvent)
 
 		case _, ok := <-w.fsWatcher.Errors:
 			if !ok {
@@ -160,21 +171,22 @@ func (w *Watcher) run() {
 }
 
 func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
-	name := fsEvent.Name
+	name, err := filepath.Abs(fsEvent.Name)
+	if err != nil {
+		name = fsEvent.Name
+	}
 	var eventType EventType
 	isDir := false
 
-	// 获取文件信息判断是否为目录
 	if info, err := os.Stat(name); err == nil {
 		isDir = info.IsDir()
 	}
 
-	// 映射事件类型
 	switch {
 	case fsEvent.Has(fsnotify.Create):
 		eventType = Create
 		if isDir {
-			_ = w.Add(name) // 自动递归监听新目录
+			_ = w.Add(name)
 		}
 	case fsEvent.Has(fsnotify.Write):
 		eventType = Change
@@ -186,16 +198,30 @@ func (w *Watcher) handleFsEvent(fsEvent fsnotify.Event) {
 		return
 	}
 
-	// 过滤逻辑
 	if !w.isMatch(name, eventType, isDir) {
 		return
 	}
 
-	w.callback(&Event{
+	event := &Event{
 		Path:  name,
 		Type:  eventType,
 		IsDir: isDir,
-	})
+	}
+
+	if w.config.Debounce > 0 {
+		w.debounce(event)
+	} else {
+		w.callback(event)
+	}
+}
+
+func (w *Watcher) debounce(e *Event) {
+	key := e.Path + string(e.Type)
+	d, _ := w.debounceGroups.LoadOrStore(key, timer.NewDebouncer(w.config.Debounce, func() {
+		w.callback(e)
+		w.debounceGroups.Delete(key)
+	}))
+	d.(*timer.Debouncer).Trigger()
 }
 
 func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
@@ -212,15 +238,13 @@ func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 	}
 
 	// 2. 排除过滤 (通用)
-	if w.isMatchExclude(path) {
+	if w.isMatchExclude(path, isDir) {
 		return false
 	}
 
 	// 3. 类型过滤 (仅针对文件)
 	if !isDir {
 		ext := filepath.Ext(path)
-		
-		// 排除类型
 		if len(w.config.ExcludeTypes) > 0 {
 			for _, t := range w.config.ExcludeTypes {
 				if ext == t {
@@ -229,7 +253,6 @@ func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 			}
 		}
 
-		// 包含类型
 		if len(w.config.Types) > 0 {
 			typeMatch := false
 			for _, t := range w.config.Types {
@@ -247,36 +270,26 @@ func (w *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 	return true
 }
 
-func (w *Watcher) isMatchExclude(path string) bool {
-	if len(w.config.Excludes) == 0 {
-		return false
-	}
-
-	for _, pattern := range w.config.Excludes {
-		// 简单模糊匹配：如果包含 * 则尝试 Match，否则使用 Contains
-		if strings.Contains(pattern, "*") {
-			if matched, _ := filepath.Match(pattern, path); matched {
-				return true
-			}
-			// 额外支持在路径中包含 pattern 的情况
-			if strings.Contains(path, strings.ReplaceAll(pattern, "*", "")) {
-				return true
-			}
-		} else {
-			if strings.Contains(path, pattern) {
-				return true
-			}
+func (w *Watcher) isMatchExclude(path string, isDir bool) bool {
+	// 统一使用 / 作为路径分隔符进行匹配，对齐 gitignore 习惯
+	p := filepath.ToSlash(path)
+	base := filepath.Base(path)
+	for _, g := range w.excludeGlobs {
+		if g.Match(p) || g.Match(base) {
+			return true
+		}
+		// 如果是目录，尝试加上 / 匹配 (支持 **/node_modules/** 这种语法匹配目录本身)
+		if isDir && g.Match(p+"/") {
+			return true
 		}
 	}
 	return false
 }
 
-// WatchList 返回当前监听的所有路径
 func (w *Watcher) WatchList() []string {
 	return w.fsWatcher.WatchList()
 }
 
-// EasyStart 极简启动方式
 func EasyStart(path string, callback func(string, EventType)) (*Watcher, error) {
 	return Start(Config{
 		Paths: []string{path},
