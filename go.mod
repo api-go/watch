@@ -3,14 +3,14 @@ module apigo.cc/go/watch
 go 1.25.0
 
 require (
-	apigo.cc/go/file v1.3.0
+	apigo.cc/go/file v1.3.1
 	apigo.cc/go/timer v1.3.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gobwas/glob v0.2.3
 )
 
 require (
-	apigo.cc/go/cast v1.3.0 // indirect
+	apigo.cc/go/cast v1.3.2 // indirect
 	apigo.cc/go/encoding v1.3.0 // indirect
 	apigo.cc/go/rand v1.3.0 // indirect
 	apigo.cc/go/safe v1.3.0 // indirect
