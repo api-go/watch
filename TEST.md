@@ -1,24 +1,26 @@
 # Test Report
 
 ## 单元测试结果
-执行时间: 2026-05-07
+执行时间: 2026-06-21
 
 ```
 === RUN   TestWatch
---- PASS: TestWatch (0.21s)
+--- PASS: TestWatch (0.20s)
 === RUN   TestDebounce
---- PASS: TestDebounce (0.26s)
+--- PASS: TestDebounce (0.28s)
 === RUN   TestEasyStart
 --- PASS: TestEasyStart (0.00s)
 PASS
-ok  	apigo.cc/go/watch	0.849s
+ok  	apigo.cc/go/watch	2.028s
 ```
 
 ## 性能测试结果 (Benchmark)
 ```
-BenchmarkIsMatch-16                 	15307893	        74.12 ns/op	       0 B/op	       0 allocs/op
-BenchmarkIsExcluded-16              	45664744	        26.09 ns/op	       0 B/op	       0 allocs/op
-BenchmarkDebounce-16                	 3345813	       369.3 ns/op	     224 B/op	       5 allocs/op
+BenchmarkIsMatch-16                 	14138798	        84.94 ns/op
+BenchmarkIsExcluded-16              	49184965	        23.74 ns/op
+BenchmarkDebounce-16                	 3307248	       378.8 ns/op
+BenchmarkKeyGeneration-16           	27976675	        44.53 ns/op
+BenchmarkKeyGenerationWithFmt-16    	 6969997	       169.7 ns/op
 ```
 
 ## 测试覆盖场景
