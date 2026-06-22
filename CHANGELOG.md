@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.5.3 (2026-06-22)
+- **新增 CLI**: 新增 `watch/watch` 子包，提供 `watch` 命令行工具，支持 `go install apigo.cc/go/watch/watch@latest` 安装。
+  - 支持 `-type`/`-exclude-type`/`-exclude-path` 等 watch.Start 全部配置能力。
+  - 预设快捷方式：`-go`/`-web`/`-js`/`-py` 对应各开发场景。
+  - 预设值与显式参数合并，不替换。
+  - 无命令时打印变更事件到 stdout。
+- **依赖更新**: 新增依赖 `go/shell` v1.5.4，用于子进程生命周期管理。
+
 ## v1.5.2 (2026-06-21)
 - **依赖更新**: 升级依赖 `jsmod` 至 `v1.5.3`，`cast` 至 `v1.5.3`，`rand` 至 `v1.5.3`，`encoding` 至 `v1.5.4`，`safe` 至 `v1.5.2`，`file` 至 `v1.5.5`。
 

@@ -20,6 +20,44 @@
 go get apigo.cc/go/watch
 ```
 
+### CLI 命令行工具
+
+```bash
+go install apigo.cc/go/watch/watch@latest
+```
+
+```bash
+# Go 开发，变更时重新运行测试
+watch -go go test ./...
+
+# Web 前端，变更时自动构建
+watch -web npm run build
+
+# Python 开发，变更时重启脚本
+watch -py python main.py --dev
+
+# 自定义：监听 src 目录的 Go 文件，变更时运行
+watch -path ./src -type go go run .
+
+# 仅打印变更事件（不执行命令）
+watch -go
+```
+
+**参数说明**：
+
+| 参数 | 说明 |
+|---|---|
+| `-path` | 监听路径（默认 `.`，递归） |
+| `-type` | 包含文件类型，逗号分隔 |
+| `-exclude-type` | 排除文件类型，逗号分隔 |
+| `-exclude-path` | 排除路径模式，可重复（gitignore 语义） |
+| `-go` | Go 开发预设（go \| vendor/\*\*, \*\*/node_modules/\*\*） |
+| `-web` | Web 前端预设（html,css,js,ts,vue,jsx,tsx \| node_modules/\*\*, dist/\*\*） |
+| `-js` | Node.js 预设（js,ts,json \| node_modules/\*\*） |
+| `-py` | Python 预设（py,toml,yaml,yml \| \_\_pycache\_\_/\*\*, .venv/\*\*） |
+
+预设值会与用户显式指定的参数合并追加，不会互相替换。
+
 ## API 指南
 
 ### Start
