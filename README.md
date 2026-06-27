@@ -26,37 +26,54 @@ go get apigo.cc/go/watch
 go install apigo.cc/go/watch/watch@latest
 ```
 
+**快速体验**：
 ```bash
-# Go 开发，变更时重新运行测试
-watch -go go test ./...
+# Go 开发：无需提供命令，默认自动执行 go run . (并支持智能追加参数)
+watch --go
+watch --go --dev      # 实际执行: go run . -- --dev
 
-# Web 前端，变更时自动构建
-watch -web npm run build
+# Go 测试：默认执行 go test -v -count=1 ./...
+watch --gotest
 
-# Python 开发，变更时重启脚本
-watch -py python main.py --dev
+# Web 前端：默认执行 npm run dev
+watch --web
 
-# 自定义：监听 src 目录的 Go 文件，变更时运行
-watch -path ./src -type go go run .
-
-# 仅打印变更事件（不执行命令）
-watch -go
+# 自定义执行命令（清屏并编译）
+watch -c -e go -i "vendor/**" go build -o app
 ```
+
+**任务文件 `.watch`**：
+支持在项目根目录创建 `.watch` 文件（键值对格式），实现极简任务流。自动忽略文件中的空行和 `#` 注释。
+```ini
+dev = -c --go
+test = --gotest
+build = -c -e go -i vendor/** go build -o app
+```
+- 运行 `watch --dev`：直接加载 `dev` 的配置运行。
+- 运行 `watch`（无参数）：自动执行第一项任务！
+
+**自动排除 `.gitignore`**：
+`watch` 默认会自动读取当前目录下的 `.gitignore` 和 `.ignore` 文件，并将其中的规则加入排除列表，**完全开箱即用**。
+
+**交互式重启**：
+当程序运行在后台时，在终端内敲击 `rs` 并回车，即可强行手动重启。
 
 **参数说明**：
 
 | 参数 | 说明 |
 |---|---|
-| `-path` | 监听路径（默认 `.`，递归） |
-| `-type` | 包含文件类型，逗号分隔 |
-| `-exclude-type` | 排除文件类型，逗号分隔 |
-| `-exclude-path` | 排除路径模式，可重复（gitignore 语义） |
-| `-go` | Go 开发预设（go \| vendor/\*\*, \*\*/node_modules/\*\*） |
-| `-web` | Web 前端预设（html,css,js,ts,vue,jsx,tsx \| node_modules/\*\*, dist/\*\*） |
-| `-js` | Node.js 预设（js,ts,json \| node_modules/\*\*） |
-| `-py` | Python 预设（py,toml,yaml,yml \| \_\_pycache\_\_/\*\*, .venv/\*\*） |
+| `-w, --watch` | 监听路径（默认 `.`，递归） |
+| `-e, --ext` | 包含文件类型，逗号分隔 (如 `go,js`) |
+| `-E, --exclude-ext` | 排除文件类型，逗号分隔 |
+| `-i, --ignore` | 排除路径模式，可重复（gitignore 语义） |
+| `-c, --clear` | 重启前自动清屏 |
+| `--go` | Go 预设 (自动补齐 `go run .` 与忽略路径) |
+| `--gotest` | Go 测试预设 (自动补齐 `go test -v -count=1 ./...`) |
+| `--web` | Web 预设 (自动补齐 `npm run dev`) |
+| `--js` | Node.js 预设 (自动补齐 `npm start`) |
+| `--py` | Python 预设 (自动补齐 `python main.py`) |
 
-预设值会与用户显式指定的参数合并追加，不会互相替换。
+预设值会与用户显式指定的参数合并追加，遇到显式声明的新命令时，会自动替换预设默认命令。
 
 ## API 指南
 

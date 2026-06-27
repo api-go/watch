@@ -91,6 +91,52 @@ func TestWatch(t *testing.T) {
 	}
 }
 
+// TestDirEventWithTypeFilter 验证：配置了 Types 白名单时，文件夹的变化不应触发回调
+func TestDirEventWithTypeFilter(t *testing.T) {
+	testDir := "test_dir_filter"
+	_ = os.RemoveAll(testDir)
+	_ = os.MkdirAll(testDir, 0755)
+	defer os.RemoveAll(testDir)
+
+	events := make(chan *watch.Event, 5)
+	config := watch.Config{
+		Paths: []string{testDir},
+		Types: []string{".go"}, // 只监听 .go 文件
+	}
+
+	w, err := watch.Start(config, func(e *watch.Event) {
+		events <- e
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer w.Stop()
+
+	// 创建一个子目录，不应触发回调
+	subDir := filepath.Join(testDir, "subpkg")
+	_ = os.MkdirAll(subDir, 0755)
+
+	select {
+	case e := <-events:
+		t.Errorf("should not receive event for dir creation when Types filter is set, got %v (isDir=%v)", e.Path, e.IsDir)
+	case <-time.After(150 * time.Millisecond):
+		// OK: 文件夹创建事件被正确过滤
+	}
+
+	// 创建一个 .go 文件，应该触发回调
+	goFile, _ := filepath.Abs(filepath.Join(testDir, "main.go"))
+	_ = os.WriteFile(goFile, []byte("package main"), 0644)
+
+	select {
+	case e := <-events:
+		if e.Path != goFile {
+			t.Errorf("expected event for %s, got %s", goFile, e.Path)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("timeout waiting for .go file create event")
+	}
+}
+
 func TestDebounce(t *testing.T) {
 	testDir := "test_debounce"
 	_ = os.RemoveAll(testDir)

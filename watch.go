@@ -251,8 +251,13 @@ func (watcher *Watcher) isMatch(path string, et EventType, isDir bool) bool {
 		return false
 	}
 
-	// 3. 类型过滤 (仅针对文件)
-	if !isDir {
+	// 3. 类型过滤
+	if isDir {
+		// 目录没有后缀，若用户配置了文件类型白名单，则目录事件不匹配
+		if len(watcher.typeMap) > 0 {
+			return false
+		}
+	} else {
 		ext := filepath.Ext(path)
 		if len(watcher.exTypeMap) > 0 {
 			if _, ok := watcher.exTypeMap[ext]; ok {

@@ -1,17 +1,19 @@
 # Test Report
 
 ## 单元测试结果
-执行时间: 2026-06-22
+执行时间: 2026-06-27
 
 ```
 === RUN   TestWatch
 --- PASS: TestWatch (0.21s)
+=== RUN   TestDirEventWithTypeFilter
+--- PASS: TestDirEventWithTypeFilter (0.15s)
 === RUN   TestDebounce
 --- PASS: TestDebounce (0.26s)
 === RUN   TestEasyStart
 --- PASS: TestEasyStart (0.00s)
 PASS
-ok  	apigo.cc/go/watch	0.852s
+ok  	apigo.cc/go/watch	1.018s
 ```
 
 ## 性能测试结果 (Benchmark)
@@ -33,3 +35,4 @@ BenchmarkKeyGenerationWithFmt-16    	 7360394	       167.6 ns/op
 4. **路径归一化**: 验证绝对路径下的准确匹配。
 5. **极简接口**: 验证 `EasyStart` 的可用性。
 6. **性能优化验证**: 验证在高频匹配场景下的 $O(1)$ 查找能力。
+7. **类型白名单与目录过滤**: 验证开启 Types 白名单时，正常过滤目录变更事件，不误触发回调 (`TestDirEventWithTypeFilter`)。

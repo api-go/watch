@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v1.5.4 (2026-06-27)
+- **修复 Bug**: 修复了配置 `Types`（文件类型白名单）时，目录本身的创建/删除等事件未能被正确过滤的问题。
+- **CLI 体验大幅升级**:
+  - **紧凑型 UI**: 重新设计了日志输出（Banner 与 Event），视觉更加紧凑专业，彻底分离了应用输出与 Watch 日志。
+  - **智能追加参数**: 当使用 `--go` 等预设并提供自定义参数（如 `watch --go --dev`）时，CLI 会智能判断并将其追加到默认命令（如 `go run . -- --dev`）。
+  - **.gitignore 支持**: 默认自动读取当前目录的 `.gitignore` 与 `.ignore` 文件并将其中的规则加入排除列表。
+  - **.watch 任务文件**: 支持基于 `.watch` 文件的极简任务配置（键值对格式），可无参数直接执行默认任务，或通过 `watch --taskname` 执行特定任务。
+  - **清屏支持**: 新增 `-c, --clear` 参数，在重启前自动清理终端。
+  - **手动重启**: 支持在运行时键入 `rs` + 回车强行重启服务。
+  - **恢复参数**: 重新暴露 `-E, --exclude-ext` 选项（原 `-exclude-type`）方便灵活排除特定后缀。
+  - **参数标准化**: `-path` 改为 `-w/--watch`，`-type` 改为 `-e/--ext`，`-exclude-path` 改为 `-i/--ignore` 等。
+
 ## v1.5.3 (2026-06-22)
 - **新增 CLI**: 新增 `watch/watch` 子包，提供 `watch` 命令行工具，支持 `go install apigo.cc/go/watch/watch@latest` 安装。
   - 支持 `-type`/`-exclude-type`/`-exclude-path` 等 watch.Start 全部配置能力。
