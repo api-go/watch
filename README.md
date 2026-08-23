@@ -57,6 +57,12 @@ build = -c -e go -i vendor/** go build -o app
 
 **交互式重启**：
 当程序运行在后台时，在终端内敲击 `rs` 并回车，即可强行手动重启。
+watch 启动时会在当前目录写入 `watch.pid`，也可通过信号手动重启：
+```bash
+kill -USR1 "$(cat watch.pid)"
+watch -r                         # 读取当前目录 watch.pid
+watch --reload path/to/watch.pid # 指定 PID 文件
+```
 
 **参数说明**：
 
@@ -67,6 +73,7 @@ build = -c -e go -i vendor/** go build -o app
 | `-E, --exclude-ext` | 排除文件类型，逗号分隔 |
 | `-i, --ignore` | 排除路径模式，可重复（gitignore 语义） |
 | `-c, --clear` | 重启前自动清屏 |
+| `-r, --reload [pidfile]` | 向 PID 文件中的 watch 进程发送重启信号 |
 | `--go` | Go 预设 (自动补齐 `go run .` 与忽略路径) |
 | `--gotest` | Go 测试预设 (自动补齐 `go test -v -count=1 ./...`) |
 | `--web` | Web 预设 (自动补齐 `npm run dev`) |

@@ -45,3 +45,7 @@
 - 从 `@ssgo/tool/watcher` 迁移并重构。
 - **基础设施对齐**: 使用 `apigo.cc/go/file` 替代标准库。
 - **API 优化**: 引入 `Event` 结构体，提供 `EasyStart` 极简入口。
+# [v1.5.5] - 2026-08-24
+- **CLI**:
+  - Add `watch.pid` lifecycle management and `SIGUSR1` manual reload support.
+  - Add `-r/--reload` PID-file control and ensure `-h/--help` takes precedence over `.watch` tasks.

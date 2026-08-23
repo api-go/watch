@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -73,6 +74,15 @@ var presets = map[string]preset{
 
 func main() {
 	args := os.Args[1:]
+	// Built-in control options must be handled before loading .watch; otherwise
+	// a task definition can consume -h as task arguments.
+	if hasHelpFlag(args) {
+		printHelp()
+		return
+	}
+	if handleReload(args) {
+		return
+	}
 	args = tryLoadWatchFile(args)
 
 	if len(args) == 0 {
@@ -166,6 +176,12 @@ func main() {
 		Excludes:     excludePaths,
 		Debounce:     debounceTime,
 	}
+	pidPath := filepath.Join(".", "watch.pid")
+	if err := os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0644); err != nil {
+		logError("failed to write watch.pid: " + err.Error())
+	} else {
+		defer os.Remove(pidPath)
+	}
 
 	printBanner(config, command, clearScreen)
 
@@ -176,6 +192,47 @@ func main() {
 	}
 }
 
+func hasHelpFlag(args []string) bool {
+	for _, arg := range args {
+		if arg == "-h" || arg == "--help" {
+			return true
+		}
+	}
+	return false
+}
+
+// handleReload sends SIGUSR1 to the process recorded in a PID file.
+func handleReload(args []string) bool {
+	for i, arg := range args {
+		if arg != "-r" && arg != "--reload" {
+			continue
+		}
+		pidPath := "watch.pid"
+		if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			pidPath = args[i+1]
+		}
+		data, err := os.ReadFile(pidPath)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				logError("failed to read PID file: " + err.Error())
+			}
+			return true
+		}
+		var pid int
+		if _, err = fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &pid); err != nil || pid <= 0 {
+			logError("invalid PID in " + pidPath)
+			return true
+		}
+		if err = syscall.Kill(pid, syscall.SIGUSR1); err != nil {
+			logError(fmt.Sprintf("failed to reload process %d: %v", pid, err))
+		} else {
+			fmt.Printf("sent reload signal to process %d (%s)\n", pid, pidPath)
+		}
+		return true
+	}
+	return false
+}
+
 // tryLoadWatchFile 尝试从 .watch 读取配置并处理 --task
 func tryLoadWatchFile(args []string) []string {
 	contentBytes, err := os.ReadFile(".watch")
@@ -183,7 +240,7 @@ func tryLoadWatchFile(args []string) []string {
 		return args
 	}
 	content := string(contentBytes)
-	
+
 	tasks := make(map[string]string)
 	var firstTask string
 
@@ -273,7 +330,7 @@ func runCommand(config watch.Config, command []string, clearScreen bool) {
 
 	var proc *shell.Process
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGUSR1)
 
 	restart := func(e *watch.Event) {
 		if clearScreen {
@@ -312,12 +369,17 @@ func runCommand(config watch.Config, command []string, clearScreen bool) {
 	printRestart(command)
 	proc, _ = shell.Start(command[0], command[1:], &shell.Options{Dir: execDir, CatchSignal: true})
 
-	<-sigCh
+	for sig := range sigCh {
+		if sig == syscall.SIGUSR1 {
+			restart(&watch.Event{Path: "manual reload", Type: watch.Change})
+			continue
+		}
+		break
+	}
 	if proc != nil {
 		proc.Kill()
 	}
 	fmt.Printf("\n%s%s Stopped.%s\n", dim, gray, reset)
-	os.Exit(0)
 }
 
 // ── 输出函数 ───────────────────────────────────────────────────────────────────
@@ -427,6 +489,7 @@ func printHelp() {
   ` + cyan + `-E, --exclude-ext <exts>` + reset + ` Exclude extensions (comma-separated)
   ` + cyan + `-i, --ignore <pattern>` + reset + ` Ignore glob patterns (repeatable), e.g., ` + yellow + `node_modules/**` + reset + `
   ` + cyan + `-c, --clear` + reset + `            Clear screen before restarting command
+  ` + cyan + `-r, --reload [pidfile]` + reset + `  Send SIGUSR1 to the PID in watch.pid (or a specified file)
   ` + cyan + `-h, --help` + reset + `             Show this help
 
 ` + bold + `Presets` + reset + ` (Auto-injects default commands if no command provided)
