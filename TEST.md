@@ -1,5 +1,10 @@
 # Test Report
 
+## v1.5.6 验证
+- 验证文件事件、`rs` 与 `SIGUSR1` 重启请求串行执行。
+- 验证旧进程退出并释放资源后才启动新进程。
+- 全量测试、竞态测试和基准测试均通过。
+
 ## 单元测试结果
 执行时间: 2026-06-27
 
@@ -18,11 +23,11 @@ ok  	apigo.cc/go/watch	1.018s
 
 ## 性能测试结果 (Benchmark)
 ```
-BenchmarkIsMatch-16                 	16974895	        67.03 ns/op
-BenchmarkIsExcluded-16              	42681092	        24.32 ns/op
-BenchmarkDebounce-16                	 3321357	       351.8 ns/op
-BenchmarkKeyGeneration-16           	27723735	        42.48 ns/op
-BenchmarkKeyGenerationWithFmt-16    	 7360394	       167.6 ns/op
+BenchmarkIsMatch-16                 	26264806	        45.35 ns/op
+BenchmarkIsExcluded-16              	42229480	        28.65 ns/op
+BenchmarkDebounce-16                	 8131125	       148.0 ns/op
+BenchmarkKeyGeneration-16           	47584114	        25.56 ns/op
+BenchmarkKeyGenerationWithFmt-16    	13956841	        88.51 ns/op
 ```
 
 ## 测试覆盖场景

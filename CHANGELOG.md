@@ -1,9 +1,13 @@
 # CHANGELOG
 
-## Unreleased (2026-08-24)
+## v1.5.6 (2026-08-24)
 - **重启可靠性**:
   - 文件事件、终端 `rs` 和 `SIGUSR1` 重启请求统一串行处理，防止并行启动多个子进程。
   - 等待旧进程完整退出后再启动新进程，并输出停止或启动失败信息。
+- **依赖更新**: 对齐 `shell v1.5.6`、`file v1.5.6`、`cast v1.5.5`、`encoding v1.5.6`、`rand v1.5.4`、`safe v1.5.3`。
+
+## v1.5.5 (2026-08-24)
+- **CLI**: 增加 `watch.pid` 生命周期管理和 `SIGUSR1` 手动重启支持。
 
 ## v1.5.4 (2026-06-27)
 - **修复 Bug**: 修复了配置 `Types`（文件类型白名单）时，目录本身的创建/删除等事件未能被正确过滤的问题。
@@ -50,7 +54,4 @@
 - 从 `@ssgo/tool/watcher` 迁移并重构。
 - **基础设施对齐**: 使用 `apigo.cc/go/file` 替代标准库。
 - **API 优化**: 引入 `Event` 结构体，提供 `EasyStart` 极简入口。
-# [v1.5.5] - 2026-08-24
-- **CLI**:
-  - Add `watch.pid` lifecycle management and `SIGUSR1` manual reload support.
   - Add `-r/--reload` PID-file control and ensure `-h/--help` takes precedence over `.watch` tasks.
