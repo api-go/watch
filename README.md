@@ -63,6 +63,7 @@ kill -USR1 "$(cat watch.pid)"
 watch -r                         # 读取当前目录 watch.pid
 watch --reload path/to/watch.pid # 指定 PID 文件
 ```
+所有文件事件、`rs` 和信号重启请求均串行执行；旧命令退出完成后才会启动新命令。
 
 **参数说明**：
 

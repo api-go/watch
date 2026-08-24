@@ -36,3 +36,4 @@ BenchmarkKeyGenerationWithFmt-16    	 7360394	       167.6 ns/op
 5. **极简接口**: 验证 `EasyStart` 的可用性。
 6. **性能优化验证**: 验证在高频匹配场景下的 $O(1)$ 查找能力。
 7. **类型白名单与目录过滤**: 验证开启 Types 白名单时，正常过滤目录变更事件，不误触发回调 (`TestDirEventWithTypeFilter`)。
+8. **重启并发控制**: 连续发送多个 `SIGUSR1` 时重启串行执行，旧监听端口释放后才启动新进程。

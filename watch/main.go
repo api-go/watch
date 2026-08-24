@@ -328,23 +328,21 @@ func runMonitor(config watch.Config) {
 func runCommand(config watch.Config, command []string, clearScreen bool) {
 	execDir, _ := os.Getwd()
 
-	var proc *shell.Process
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP, syscall.SIGUSR1)
+	restartCh := make(chan *watch.Event, 1)
+	stopCh := make(chan struct{})
+	doneCh := make(chan struct{})
 
-	restart := func(e *watch.Event) {
-		if clearScreen {
-			fmt.Print("\033[2J\033[H")
+	requestRestart := func(e *watch.Event) {
+		select {
+		case restartCh <- e:
+		default:
+			// A restart is already pending; one restart will include all recent changes.
 		}
-		printEvent(e)
-		printRestart(command)
-		if proc != nil {
-			proc.Kill() // shell.Kill() 已内置完整的进程树(PGID)清理逻辑
-		}
-		proc, _ = shell.Start(command[0], command[1:], &shell.Options{Dir: execDir, CatchSignal: true})
 	}
 
-	w, err := watch.Start(config, restart)
+	w, err := watch.Start(config, requestRestart)
 	if err != nil {
 		logError("failed to start watcher: " + err.Error())
 		os.Exit(1)
@@ -357,28 +355,62 @@ func runCommand(config watch.Config, command []string, clearScreen bool) {
 		for scanner.Scan() {
 			text := strings.TrimSpace(scanner.Text())
 			if text == "rs" {
-				restart(&watch.Event{Path: "manual restart", Type: watch.Change})
+				requestRestart(&watch.Event{Path: "manual restart", Type: watch.Change})
 			}
 		}
 	}()
 
-	// 启动时先执行一次
-	if clearScreen {
-		fmt.Print("\033[2J\033[H")
-	}
-	printRestart(command)
-	proc, _ = shell.Start(command[0], command[1:], &shell.Options{Dir: execDir, CatchSignal: true})
+	// A single worker owns proc so file events, rs, and signals cannot restart concurrently.
+	go func() {
+		defer close(doneCh)
+		var proc *shell.Process
+		start := func() {
+			printRestart(command)
+			var err error
+			proc, err = shell.Start(command[0], command[1:], &shell.Options{Dir: execDir, CatchSignal: true})
+			if err != nil {
+				proc = nil
+				logError("failed to start command: " + err.Error())
+			}
+		}
+		if clearScreen {
+			fmt.Print("\033[2J\033[H")
+		}
+		start()
+		for {
+			select {
+			case e := <-restartCh:
+				if clearScreen {
+					fmt.Print("\033[2J\033[H")
+				}
+				printEvent(e)
+				if proc != nil {
+					if err := proc.Kill(); err != nil {
+						logError("failed to stop command: " + err.Error())
+						continue
+					}
+				}
+				start()
+			case <-stopCh:
+				if proc != nil {
+					if err := proc.Kill(); err != nil {
+						logError("failed to stop command: " + err.Error())
+					}
+				}
+				return
+			}
+		}
+	}()
 
 	for sig := range sigCh {
 		if sig == syscall.SIGUSR1 {
-			restart(&watch.Event{Path: "manual reload", Type: watch.Change})
+			requestRestart(&watch.Event{Path: "manual reload", Type: watch.Change})
 			continue
 		}
 		break
 	}
-	if proc != nil {
-		proc.Kill()
-	}
+	close(stopCh)
+	<-doneCh
 	fmt.Printf("\n%s%s Stopped.%s\n", dim, gray, reset)
 }
 
