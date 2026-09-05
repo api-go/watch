@@ -3,7 +3,7 @@ module apigo.cc/go/watch
 go 1.25.0
 
 require (
-	apigo.cc/go/file v1.5.7
+	apigo.cc/go/file v1.5.8
 	apigo.cc/go/timer v1.5.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gobwas/glob v0.2.3
