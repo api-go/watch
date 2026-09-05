@@ -3,7 +3,7 @@ module apigo.cc/go/watch
 go 1.25.0
 
 require (
-	apigo.cc/go/file v1.5.8
+	apigo.cc/go/file v1.5.9
 	apigo.cc/go/timer v1.5.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/gobwas/glob v0.2.3
@@ -15,8 +15,8 @@ require (
 )
 
 require (
-	apigo.cc/go/cast v1.5.6 // indirect
-	apigo.cc/go/encoding v1.5.7 // indirect
+	apigo.cc/go/cast v1.5.7 // indirect
+	apigo.cc/go/encoding v1.5.8 // indirect
 	apigo.cc/go/rand v1.5.4 // indirect
 	apigo.cc/go/safe v1.5.4 // indirect
 	github.com/kr/text v0.2.0 // indirect
