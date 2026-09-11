@@ -10,8 +10,8 @@ require (
 )
 
 require (
-	apigo.cc/go/jsmod v1.5.4 // indirect
-	apigo.cc/go/shell v1.5.7
+	apigo.cc/go/jsmod v1.5.5 // indirect
+	apigo.cc/go/shell v1.5.8
 )
 
 require (

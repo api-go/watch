@@ -33,6 +33,7 @@ const (
 )
 
 const debounceTime = 300 * time.Millisecond
+const commandStopTimeout = 15 * time.Second
 
 // ── Preset 定义 ────────────────────────────────────────────────────────────────
 
@@ -385,7 +386,7 @@ func runCommand(config watch.Config, command []string, clearScreen bool) {
 				}
 				printEvent(e)
 				if proc != nil {
-					if err := proc.Kill(); err != nil {
+					if err := proc.KillWithTimeout(commandStopTimeout); err != nil {
 						logError("failed to stop command: " + err.Error())
 						continue
 					}
@@ -393,7 +394,7 @@ func runCommand(config watch.Config, command []string, clearScreen bool) {
 				start()
 			case <-stopCh:
 				if proc != nil {
-					if err := proc.Kill(); err != nil {
+					if err := proc.KillWithTimeout(commandStopTimeout); err != nil {
 						logError("failed to stop command: " + err.Error())
 					}
 				}
