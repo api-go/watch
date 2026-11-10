@@ -1,3 +1,7 @@
+## [v1.5.11] - 2026-11-10
+
+- 迁移至 github.com/api-go/watch，同步内部模块路径与依赖。
+
 # CHANGELOG
 
 ## v1.5.10 (2026-09-12)
@@ -8,7 +12,7 @@
 - **依赖对齐**: 升级 `file` 至 `v1.5.8`。
 
 ## v1.5.7 (2026-09-05)
-- **依赖对齐**: 升级全部 `apigo.cc/go/*` 依赖至当前已发布版本。
+- **依赖对齐**: 升级全部 `github.com/api-go/*` 依赖至当前已发布版本。
 
 ## v1.5.6 (2026-08-24)
 - **重启可靠性**:
@@ -32,7 +36,7 @@
   - **参数标准化**: `-path` 改为 `-w/--watch`，`-type` 改为 `-e/--ext`，`-exclude-path` 改为 `-i/--ignore` 等。
 
 ## v1.5.3 (2026-06-22)
-- **新增 CLI**: 新增 `watch/watch` 子包，提供 `watch` 命令行工具，支持 `go install apigo.cc/go/watch/watch@latest` 安装。
+- **新增 CLI**: 新增 `watch/watch` 子包，提供 `watch` 命令行工具，支持 `go install github.com/api-go/watch/watch@latest` 安装。
   - 支持 `-type`/`-exclude-type`/`-exclude-path` 等 watch.Start 全部配置能力。
   - 预设快捷方式：`-go`/`-web`/`-js`/`-py` 对应各开发场景。
   - 预设值与显式参数合并，不替换。
@@ -58,10 +62,10 @@
 - **核心升级**: 引入 `github.com/gobwas/glob` 引擎。
 - **Gitignore 语义**: `Excludes` 现在支持 `**/node_modules/**` 等复杂路径模式，并能正确处理目录边界。
 - **路径归一化**: 内部统一使用绝对路径与 `/` 分隔符进行匹配，确保跨平台表现一致。
-- **事件防抖 (Debounce)**: 引入 `apigo.cc/go/timer` 的防抖能力，支持 `Debounce` 配置以合并碎片化事件。
+- **事件防抖 (Debounce)**: 引入 `github.com/api-go/timer` 的防抖能力，支持 `Debounce` 配置以合并碎片化事件。
 
 ## v1.0.0
 - 从 `@ssgo/tool/watcher` 迁移并重构。
-- **基础设施对齐**: 使用 `apigo.cc/go/file` 替代标准库。
+- **基础设施对齐**: 使用 `github.com/api-go/file` 替代标准库。
 - **API 优化**: 引入 `Event` 结构体，提供 `EasyStart` 极简入口。
   - Add `-r/--reload` PID-file control and ensure `-h/--help` takes precedence over `.watch` tasks.

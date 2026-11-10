@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"apigo.cc/go/file"
-	"apigo.cc/go/timer"
+	"github.com/api-go/file"
+	"github.com/api-go/timer"
 	"github.com/fsnotify/fsnotify"
 	"github.com/gobwas/glob"
 )

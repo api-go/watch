@@ -17,13 +17,13 @@
 ## 安装
 
 ```bash
-go get apigo.cc/go/watch
+go get github.com/api-go/watch
 ```
 
 ### CLI 命令行工具
 
 ```bash
-go install apigo.cc/go/watch/watch@latest
+go install github.com/api-go/watch/watch@latest
 ```
 
 **快速体验**：

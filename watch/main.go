@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"apigo.cc/go/shell"
-	"apigo.cc/go/watch"
+	"github.com/api-go/shell"
+	"github.com/api-go/watch"
 )
 
 // ── ANSI 颜色常量 ──────────────────────────────────────────────────────────────

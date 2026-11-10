@@ -22,7 +22,7 @@
 === RUN   TestEasyStart
 --- PASS: TestEasyStart (0.00s)
 PASS
-ok  	apigo.cc/go/watch	1.018s
+ok  	github.com/api-go/watch	1.018s
 ```
 
 ## 性能测试结果 (Benchmark)
@@ -46,3 +46,13 @@ BenchmarkKeyGenerationWithFmt-16    	13956841	        88.51 ns/op
 6. **性能优化验证**: 验证在高频匹配场景下的 $O(1)$ 查找能力。
 7. **类型白名单与目录过滤**: 验证开启 Types 白名单时，正常过滤目录变更事件，不误触发回调 (`TestDirEventWithTypeFilter`)。
 8. **重启并发控制**: 连续发送多个 `SIGUSR1` 时重启串行执行，旧监听端口释放后才启动新进程。
+
+## GitHub migration validation (pending release)
+
+Module paths and internal dependency versions are migrated. Development verification uses GOWORK=off and explicit sibling replacements; remove these replacements before release. See migration validation logs for actual results. Existing unrelated working changes are preserved and require separate review.
+
+API inventory verification: `GOWORK=off go doc` succeeded; output retained in the migration validation directory. Source exports were preserved by the path migration.
+
+## GitHub release verification
+
+GOWORK=off go test -v ./... and go test -bench=. ./... passed using published GitHub dependencies, without local replacements. go mod verify passed.

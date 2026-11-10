@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"apigo.cc/go/file"
-	"apigo.cc/go/watch"
+	"github.com/api-go/file"
+	"github.com/api-go/watch"
 )
 
 func TestWatch(t *testing.T) {
