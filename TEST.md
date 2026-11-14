@@ -56,3 +56,25 @@ API inventory verification: `GOWORK=off go doc` succeeded; output retained in th
 ## GitHub release verification
 
 GOWORK=off go test -v ./... and go test -bench=. ./... passed using published GitHub dependencies, without local replacements. go mod verify passed.
+
+## 最终依赖图验证（2026-11-14，未发布）
+
+显式本地 replace 覆盖本轮待发布依赖链；GOWORK=off go mod tidy、go test -v ./...、go test -bench=. -benchtime=1x ./...。基准按固定 1 次采样，避免排除计时的昂贵准备阶段反复校准。本轮结果：[('tidy', '0'), ('test', '0'), ('bench', '0')]。0 为通过，其他结果待定位。
+
+固定一次采样的基准摘要（非稳定性能测量）：
+
+```text
+BenchmarkIsMatch-16                 	       1	    130875 ns/op
+BenchmarkIsExcluded-16              	       1	      6833 ns/op
+BenchmarkDebounce-16                	       1	    101084 ns/op
+```
+
+## v1.5.12 正式发布验证（2026-11-14）
+
+GOWORK=off；移除全部 replace，使用已发布依赖。go mod tidy、go test -v ./...、go test -bench=. ./...、go mod verify 均通过。API 工具不可用，使用 go doc 与源码核对。
+
+```text
+BenchmarkIsMatch-16                 	25257688	        47.56 ns/op
+BenchmarkIsExcluded-16              	40430925	        29.61 ns/op
+BenchmarkDebounce-16                	 7644148	       161.3 ns/op
+```

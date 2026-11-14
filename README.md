@@ -115,3 +115,7 @@ w, err := watch.EasyStart("./data", func(path string, et watch.EventType) {
 - `Add(path string)`: 动态添加监听路径。
 - `Remove(path string)`: 动态移除监听路径。
 - `WatchList()`: 获取当前正在监听的所有路径。
+
+v1.5.12: dependency alignment with safe v1.5.6 / crypto v1.5.11. Development uses explicit local replacements; remove before release. Public API unchanged.
+
+Release v1.5.12: verified with published dependencies and GOWORK=off; all temporary replacements have been removed. Earlier development-validation notes describe historical local checks.
